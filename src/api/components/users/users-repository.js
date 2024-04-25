@@ -4,8 +4,27 @@ const { User } = require('../../../models');
  * Get a list of users
  * @returns {Promise}
  */
-async function getUsers() {
-  return User.find({});
+async function getUsers(offset, page_size, fieldSorting, orderSorting, fieldSearching, keySearching) {
+  try{
+    let user = User.find({}); //mencari semua users yang ada di database.
+
+    if(fieldSearching && keySearching){  //melakukan filter users sesuai dengan searching, menggunakan regex untuk menerima simbol.
+      const regexSearch = new RegExp(regexSearching(keySearching), 'i'); //'i' berguna untuk mengabaikan huruf kapital dan kecil.
+      
+      user = user.find({[fieldSearching]: regexSearch }); //mencari field user di database yang match dengan field user di query baik berupa email maupun name.
+    }
+
+    if(fieldSorting){  //melakukan sorting pada users
+      const sorting = {[fieldSorting]: orderSorting}; //membaca parameter orderSorting apakah desc atau asc.
+      user = user.sort(sorting); //melakukan sorting  users.
+    }
+
+    const users = await user.skip(offset).limit(page_size);
+    return users; //mengembalikan users sesui pagination, sorting, dan searching.
+  } catch (err){
+    console.error(err);
+    throw new Error('Gagal Mengambil Data Users');
+  }
 }
 
 /**
@@ -81,6 +100,15 @@ async function changePassword(id, password) {
   return User.updateOne({ _id: id }, { $set: { password } });
 }
 
+async function getSumUsers(){
+  return User.countDocuments();
+}
+
+//membuat fungsi regex untuk menampung kombinasi karakter(simbol)
+function regexSearching(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 module.exports = {
   getUsers,
   getUser,
@@ -89,4 +117,6 @@ module.exports = {
   deleteUser,
   getUserByEmail,
   changePassword,
+  getSumUsers,
+  regexSearching,
 };

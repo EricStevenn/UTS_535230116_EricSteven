@@ -10,7 +10,34 @@ const { errorResponder, errorTypes } = require('../../../core/errors');
  */
 async function getUsers(request, response, next) {
   try {
-    const users = await usersService.getUsers();
+    const page_number = parseInt(request.query.page_number) || 1; //halaman default adalah 1
+    const page_size = parseInt(request.query.page_size) || 0; //jika default, semua data akan ditampilkan dalam 1 halaman
+    const sort = request.query.sort;
+    const search = request.query.search; 
+
+    let fieldSorting, orderSorting;
+    if(sort){
+      const[field_name, sort_order] = sort.split(':'); //memisahkan antara field dan order untuk sorting.
+      fieldSorting = field_name; //membaca field name
+      orderSorting = sort_order === 'desc' ? -1 : 1; //membaca order sorting jika desc.
+    } else{ //jika tidak ada field_name maupun sort order, atau sort order bukan desc.
+      fieldSorting = 'email'; //default sort (ascending by email) 
+      orderSorting = 1;
+    }
+
+    let fieldSearching, keySearching;
+    if(search){
+      const[field_name, key] = search.split(':');
+      if(field_name === 'name' || field_name === 'email'){
+        fieldSearching = field_name; //membaaca field name dan key search
+        keySearching = key;
+      }
+    } else{ //jika tidak ada atau field name bukan name atau email maka fieldSearching dan keySearching dianggap kosong
+      fieldSearching = '';
+      keySearching = '';
+    }
+
+    const users = await usersService.getUsers(page_number, page_size, fieldSorting, orderSorting, fieldSearching, keySearching); 
     return response.status(200).json(users);
   } catch (error) {
     return next(error);

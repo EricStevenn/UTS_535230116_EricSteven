@@ -5,21 +5,50 @@ const { hashPassword, passwordMatched } = require('../../../utils/password');
  * Get list of users
  * @returns {Array}
  */
-async function getUsers() {
-  const users = await usersRepository.getUsers();
+async function getUsers(page_number, page_size, fieldSorting, orderSorting, fieldSearching, keySearching) {
+  try{
+    //Menangani sort yang formatnya salah
+    if(!fieldSorting || !['name', 'email'].includes(fieldSorting) || !orderSorting){
+      fieldSorting = 'email'; //sort email secara ascending
+      orderSorting = 1;
+    }
 
-  const results = [];
-  for (let i = 0; i < users.length; i += 1) {
-    const user = users[i];
-    results.push({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    });
+    //Menangani search yang formatnya salah
+    if(!fieldSearching || !['name', 'email'].includes(fieldSearching) || !keySearching){
+      fieldSearching = '';
+      keySearching = '';
+    }
+
+    const offset = (page_number - 1) * page_size; //offset merupakan kumpulan users ke-n setelah users yang terskip karena pagination
+    const users = await usersRepository.getUsers(offset, page_size, fieldSorting, orderSorting, fieldSearching, keySearching); //mendapatkan data users yang ada di database sesuai ketentuan paginasi.
+    const totalUsers = await usersRepository.getSumUsers(); //memperoleh jumlah keseluruhan users yang ada.
+
+    //Menghitung total halaman yang ada
+    const total_pages = Math.ceil(totalUsers / page_size)
+
+    //Menentukan apakah terdapat halaman sebelumnya dan halaman berikutnya.
+    const has_previous_page = page_number > 1;
+    const has_next_page = page_number < total_pages;
+
+    //Mengembalikan keterangan-keterangan beserta data-data user.
+    return{
+      page_number: page_number,
+      page_size: page_size,
+      count: users.length,
+      total_pages: total_pages,
+      has_previous_page: has_previous_page,
+      has_next_page: has_next_page,
+      data: users.map(user => ({  //tidak mengikut sertakan password user.
+        id : user.id,
+        name: user.name,
+        email: user.email,
+      }))
+    };
+  } catch (err){
+    console.error(err);
+    throw new Error('Error Ketika Mengambil Data');
   }
-
-  return results;
-}
+} 
 
 /**
  * Get user detail
