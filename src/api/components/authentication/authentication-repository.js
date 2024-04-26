@@ -9,6 +9,16 @@ async function getUserByEmail(email) {
   return User.findOne({ email });
 }
 
+async function updateUser(user) {
+  try {
+    await User.updateOne({ email: user.email }, { $set: user });
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getUserByEmail,
+  updateUser,
 };

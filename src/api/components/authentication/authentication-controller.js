@@ -13,15 +13,21 @@ async function login(request, response, next) {
 
   try {
     // Check login credentials
-    const loginSuccess = await authenticationServices.checkLoginCredentials(
-      email,
-      password
-    );
+    const loginSuccess = await authenticationServices.checkLoginCredentials(email, password);
 
-    if (!loginSuccess) {
+    if (loginSuccess === null) {  
+      //apabila hasil return bernilai null, artinya ada kesalahan di mana user dengan email yang diinput tidak ditemukan.
       throw errorResponder(
         errorTypes.INVALID_CREDENTIALS,
         'Wrong email or password'
+      );
+    } 
+    
+    if (loginSuccess === 'forbidden'){
+      //hasil return forbidden merujuk ketika user telah menggapai limit failed login, namun mencoba login kembali sebelum jangka waktu tertentu
+      throw errorResponder(
+        errorTypes.FORBIDDEN,
+        'Too many failed login attempts'
       );
     }
 
