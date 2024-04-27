@@ -30,14 +30,13 @@ async function checkLoginCredentials(email, password) {
 
     //jika sudah password sudah benar
     if (passwordChecked) {
-      if (lastAttemptUser && (now - lastAttemptUser) >= 3 * 60 * 1000) {
+      if (lastAttemptUser && (now - lastAttemptUser) >= 30 * 60 * 1000) {
         //reset attempts dan last_attempt.
         user.attempts = 0;
-        user.last_attempt = null;
       }
       //kondisi ini digunakan apabila sebelumnya user fail login sebanyak 5 kali, sehingga,
       //walaupun di percobaan selanjutnya, password yang dimasukkan sudah benar, namun tetap perlu menunggu jeda waktu selama n-menit.
-      if (user.attempts > 5 && lastAttemptUser && (now - lastAttemptUser) < 3 * 60 * 1000){ //misal jeda waktu 3 menit.
+      if (user.attempts >= 5){ //misal jeda waktu 30 menit.
         return 'forbidden'; 
       }
       //Jika berhasil login, maka attempts akan direset menjadi 0 dan last_attemptnya menjadi null, sehingga setelah logout bisa login kembali dengan attempt mulai dari 0
@@ -54,7 +53,7 @@ async function checkLoginCredentials(email, password) {
       };
     } else {
       //Untuk kondisi password tidak sesuai, dan jeda waktu dengan menit ke-n untuk user bisa kembali login.
-      if (lastAttemptUser && (now - lastAttemptUser) >= 3 * 60 * 1000) {
+      if (lastAttemptUser && (now - lastAttemptUser) >= 30 * 60 * 1000) {
         //reset attempts dan last_attempt.
         user.attempts = 0;
         user.last_attempt = null;

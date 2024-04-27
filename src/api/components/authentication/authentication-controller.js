@@ -27,7 +27,7 @@ async function login(request, response, next) {
       //hasil return forbidden merujuk ketika user telah menggapai limit failed login, namun mencoba login kembali sebelum jangka waktu tertentu
       throw errorResponder(
         errorTypes.FORBIDDEN,
-        'Too many failed login attempts'
+        'Too many failed login attempts, please try again 30 minutes later.'
       );
     }
 
