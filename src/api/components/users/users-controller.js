@@ -202,7 +202,7 @@ async function changePassword(request, response, next) {
       request.params.id,
       request.body.password_new
     );
-
+s
     if (!changeSuccess) {
       throw errorResponder(
         errorTypes.UNPROCESSABLE_ENTITY,

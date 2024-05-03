@@ -72,6 +72,21 @@ const errorTypes = {
     status: 403,
     code: 'INVALID_PASSWORD_ERROR',
   },
+  INVALID_ACCESS_CODE: {
+    description: 'Invalid access code',
+    status: 403,
+    code: 'INVALID_ACCESS_CODE_ERROR',
+  },
+  INVALID_PIN:{
+    description: 'Invalid pin',
+    status: 403,
+    code: 'INVALID_PIN_ERROR',
+  },
+  LACK_OF_BALANCE:{
+    description: 'Balance is not enough',
+    status: 403,
+    code: 'LACK_OF_BALANCE_ERROR',
+  },
   TOKEN_EXPIRED: {
     description: 'Token expired',
     status: 419,
