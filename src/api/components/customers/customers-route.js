@@ -25,12 +25,15 @@ module.exports = (app) => {
 
   //transfer saldo ke rekening customer lain
   route.put(
-    '/:account_number',
+    '/transfer/:account_number',
     authenticationMiddleware,
     celebrate(customersValidator.transferValidation),
     customersControllers.transferAmount
   );
 
   route.delete('/:account_number', authenticationMiddleware, customersControllers.deleteCustomer);
+
+  route.get('/transaction_history/:account_number', authenticationMiddleware, customersControllers.getTransactionHistory);
+
 
 };

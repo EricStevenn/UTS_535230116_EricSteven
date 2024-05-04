@@ -73,6 +73,7 @@ async function getCustomer(account_number) {
   return {
     name: customer.name,
     account_number: customer.account_number,
+    balance: customer.balance,
   };
 }
 
@@ -93,29 +94,33 @@ async function transferAmount(sentBy, receivedBy, amount) {
   try {
     const sender = await customersRepository.getCustomerByAccountNumber(sentBy);
 
-    if(sender.balance < amount){
-      return false;
+    if (!sender) {
+      throw new Error("Pengirim tidak ditemukan");
+    }
+
+    if (sender.balance < amount) {
+      throw new Error("Saldo tidak mencukupi");
     }
 
     // Memanggil fungsi transferToReceiver dari customersRepository
-    const transferSuccess = await customersRepository.updateReceiverBalance(receivedBy, amount);
+    const transferSuccess = await customersRepository.updateReceiverBalance(receivedBy, sentBy, amount);
 
     if (!transferSuccess) {
-      return null;
+      throw new Error("Gagal mentransfer ke penerima");
     }
 
     // Memanggil fungsi updateSenderBalance dari customersRepository
-    const updateSenderSuccess = await customersRepository.updateSenderBalance(sentBy, amount);
+    const updateSenderSuccess = await customersRepository.updateSenderBalance(sentBy, receivedBy, amount);
 
     if (!updateSenderSuccess) {
-      return null;
+      throw new Error("Gagal memperbarui saldo pengirim");
     }
 
     // Transfer berhasil
     return true;
   } catch (error) {
     console.error("Gagal melakukan transfer:", error);
-    return false;
+    throw error;
   }
 }
 
@@ -137,6 +142,59 @@ async function deleteCustomer(account_number) {
   return true;
 }
 
+//get transaction history
+async function getTransactionHistory(account_number) {
+  try {
+    //memperoleh customer dengan account_number tertentu
+    const customer = await customersRepository.getCustomerByAccountNumber(account_number);
+    if (!customer) {
+      throw new Error("Customer Not Found");
+    }
+    const customer_name = customer.name;
+
+    //memperoleh riwayat transaksi milik account_number tertentu
+    const transactionsHistory = await customersRepository.getTransactionHistory(account_number);
+
+    //return transaction history yang telah diatur sesuai format
+    const formattedTransactionsHistory = await Promise.all(transactionsHistory.map(async transactionHistory => {
+      const customerWhoTransfer = await customersRepository.getCustomerByAccountNumber(transactionHistory.sender);
+      const senderName = customerWhoTransfer.name;
+
+      const customerWhoReceive = await customersRepository.getCustomerByAccountNumber(transactionHistory.receiver);
+      const receiverName = customerWhoReceive.name;
+
+      const sender = transactionHistory.sender === account_number ? customer_name : senderName;
+      const receiver = transactionHistory.receiver === account_number ? customer_name : receiverName;
+      const act = transactionHistory.sender === account_number ? "transfer" : "receive";
+      const amount = new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR'}).format(transactionHistory.amount);
+      const timestamp = dateFormat(transactionHistory.timestamp);
+
+      let transaction_format;
+      let info_message;
+      
+      if (act === "transfer") {
+        info_message = `transfer ${amount} to ${receiver} (${transactionHistory.receiver})`;
+        transaction_format = `[${timestamp}]  ${sender} (${transactionHistory.sender}) ${info_message}`;
+      } else {
+        info_message = `receive ${amount} from ${sender} (${transactionHistory.sender})`;
+        transaction_format = `[${timestamp}]  ${receiver} (${transactionHistory.receiver}) ${info_message}`;
+      }
+      return transaction_format;
+    }));
+
+    return formattedTransactionsHistory;
+  } catch (error) {
+    console.error("Failed to get transaction history:", error);
+    throw error;
+  }
+}
+
+
+//membuat format date
+function dateFormat(date) {
+  const dateFormatted = new Date(date).toLocaleString('en-GB', { hour12: false });
+  return dateFormatted.replace(',', '');
+}
 
 
 module.exports = {
@@ -147,4 +205,6 @@ module.exports = {
   checkPin,
   transferAmount,
   deleteCustomer,
+  getTransactionHistory,
+  dateFormat,
 }

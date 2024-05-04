@@ -153,6 +153,26 @@ async function deleteCustomer(request, response, next) {
   }
 }
 
+//transaction history 
+async function getTransactionHistory(request, response, next){
+  try{
+    const account_number = request.params.account_number;
+
+    const transaction = await customersService.getTransactionHistory(account_number);
+    if(!transaction){
+      throw errorResponder(
+        errorTypes.UNPROCESSABLE_ENTITY,
+        'Failed to get transactions history!'
+      );
+    }
+
+    return response.status(200).json({ transaction });
+
+  } catch (error) {
+    return next(error);
+  }
+}
+
 
 module.exports = {
   createCustomer,
@@ -160,4 +180,5 @@ module.exports = {
   getCustomer,
   transferAmount,
   deleteCustomer,
+  getTransactionHistory,
 }

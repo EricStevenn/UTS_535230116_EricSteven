@@ -1,4 +1,5 @@
 const { Customer } = require('../../../models');
+const { Transaction } = require('../../../models');
 
 //Membuat customer_account
 async function createCustomer(name, account_number, access_code, pin, balance) {
@@ -50,43 +51,46 @@ function regexSearching(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-//update receiver balance
-async function updateReceiverBalance(receivedBy, amount) {
-  try{
+//transferAmount
+async function updateReceiverBalance(receivedBy, sentBy, amount) {
+  try {
     const receiver = await Customer.findOne({ account_number: receivedBy });
-
+    //jika gagal menemukan customer yang menerima uang transfer
     if (!receiver) {
-      return false; // Gagal memperbarui saldo penerima
+      return false; 
     }
-
+    //menjumlahkan saldo dengan jumlah uang yang ditransfer
     const newBalance = receiver.balance + amount;
-    
-    await Customer.updateOne({account_number: receivedBy}, {$set: {balance: newBalance}});
-    return true;
 
+    await Customer.updateOne({ account_number: receivedBy }, { $set: { balance: newBalance } });
+
+    // Simpan transaksi
+    await savedTransaction(sentBy, receivedBy, amount);
+
+    return true; 
   } catch (error) {
-    console.error("Gagal memperbarui saldo penerima:", error);
-    return false; // Gagal memperbarui saldo penerima
+    console.error("Failed updating receiver's balance:", error);
+    return false;
   }
 }
 
-//update sender balance setelah berhasil melakukan transfer
-async function updateSenderBalance(sentBy, amount) {
-  try{
-    const sender = await Customer.findOne({account_number: sentBy});
-
+//sender
+async function updateSenderBalance(sentBy, receivedBy, amount) {
+  try {
+    const sender = await Customer.findOne({ account_number: sentBy });
+    //jika gagal menemukan customer yang transfer uang.
     if (!sender) {
-      return false; // Gagal memperbarui saldo pengirim
+      return false; 
     }
-
+    //mengurangi saldo milik pengirim
     const newBalance = sender.balance - amount;
 
     await Customer.updateOne({ account_number: sentBy }, { $set: { balance: newBalance } });
-    
-    return true;
+
+    return true; 
   } catch (error) {
-    console.error("Failed to update sender's balance", error);
-    return null; // Gagal memperbarui saldo pengirim
+    console.error("Failed updating sender's balance:", error);
+    return false;
   }
 }
 
@@ -95,13 +99,47 @@ async function deleteCustomer(account_number) {
   return Customer.deleteOne({ account_number: account_number });
 }
 
+//transaction history
+async function savedTransaction(sentBy, receivedBy, amount){
+  try{
+    const newTransaction = new Transaction({
+      sender: sentBy,
+      receiver: receivedBy,
+      amount: amount,
+      timestamp: new Date()
+    });
+
+    await newTransaction.save()
+
+  } catch (error) {
+    console.error("Failed to saving the transaction:", error);
+  }
+}
+
+//getTransactionHistory
+async function getTransactionHistory(account_number) {
+  try {
+    const transactions = await Transaction.find({
+      $or: [{ sender: account_number }, { receiver: account_number }]
+    }, { _id: 0, __v: 0 }).lean();
+
+    return transactions;
+  } catch (error) {
+    console.error("Gagal mendapatkan riwayat transaksi:", error);
+    throw error;
+  }
+}
+
+
 module.exports = {
   createCustomer,
   getCustomers,
   getCustomerByAccountNumber,
   getSumCustomers,
   regexSearching,
-  updateReceiverBalance,
   updateSenderBalance,
+  updateReceiverBalance,
   deleteCustomer,
+  savedTransaction,
+  getTransactionHistory,
 }
