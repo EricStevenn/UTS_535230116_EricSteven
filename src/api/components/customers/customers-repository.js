@@ -1,7 +1,16 @@
 const { Customer } = require('../../../models');
 const { Transaction } = require('../../../models');
+const {regexSearching} = require('../../../utils/regex');
 
-//Membuat customer_account
+/**
+ * menambahkan akun nasabah baru ke database
+ * @param {string} name - nama nasabah
+ * @param {string} account_number - nomor rekeningnya nasabah
+ * @param {string} access_code - kode akses akun nasabah
+ * @param {string} pin - pin akun nasabah
+ * @param {number} balance - saldo awal yang disetor nasabah
+ * @returns {Promise}
+ */
 async function createCustomer(name, account_number, access_code, pin, balance) {
   return Customer.create({
     name,
@@ -12,59 +21,82 @@ async function createCustomer(name, account_number, access_code, pin, balance) {
   });
 }
 
-//retrieve customers
+
+/**
+ * Mendapatkan list nasabah dengan pagination
+ * @param {number} offset - customer ke-n yang skip customers lain
+ * @param {number} page_size - jumlah nasabah dalam 1 halaman
+ * @param {string} fieldSorting - info dari nasabah apa yang ingin disort (ascending atau descending)
+ * @param {number} orderSorting - menentukan apakah ascending atau descending (1 : -1)
+ * @param {number} fieldSearching - info dari nasabah apa yang ingin dicari (nomor rekening atau nama)
+ * @param {string} keySearching - nama nasabah atau nomor rekeningnya
+ * @returns {object}
+ */
 async function getCustomers(offset, page_size, fieldSorting, orderSorting, fieldSearching, keySearching) {
   try{
-    let customer = Customer.find({}); //mencari semua users yang ada di database.
+    let customer = Customer.find({}); //mencari semua nasabah yang ada di database.
 
-    if(fieldSearching && keySearching){  //melakukan filter users sesuai dengan searching, menggunakan regex untuk menerima simbol.
+    if(fieldSearching && keySearching){  //melakukan filter nasabah sesuai dengan searching, menggunakan regex untuk menerima simbol.
       const regexSearch = new RegExp(regexSearching(keySearching), 'i'); //'i' berguna untuk mengabaikan huruf kapital dan kecil.
       
-      customer = customer.find({[fieldSearching]: regexSearch }); //mencari field user di database yang match dengan field user di query baik berupa email maupun name.
+      customer = customer.find({[fieldSearching]: regexSearch }); //mencari field nasabah di database yang match dengan field nasabah di query baik berupa email maupun name.
     }
 
-    if(fieldSorting){  //melakukan sorting pada users
+    if(fieldSorting){  //melakukan sorting pada nasabah
       const sorting = {[fieldSorting]: orderSorting}; //membaca parameter orderSorting apakah desc atau asc.
-      customer = customer.sort(sorting); //melakukan sorting  users.
+      customer = customer.sort(sorting); //melakukan sorting customers.
     }
 
     const customers = await customer.skip(offset).limit(page_size);
-    return customers; //mengembalikan users sesui pagination, sorting, dan searching.
+    return customers; //mengembalikan nasabah sesuai pagination, sorting, dan searching.
   } catch (err){
     console.error(err);
     throw new Error('Gagal Mengambil Data Users');
   }
 }
 
-//retrieve user by account_number
+
+/**
+ * Mendapatkan akun nasabah yang sesuai dengan nomor rekening yang diinginkan di database
+ * @param {string} account_number - nomor rekening nasabah
+ * @returns {Promise}
+ */
 async function getCustomerByAccountNumber(account_number) {
   return Customer.findOne({ account_number });
 }
 
-//Menghitung jumlah customers yang ada di database
+
+/**
+ * Menghitung jumlah nasabah yang ada di database
+ * @returns {Promise}
+ */
 async function getSumCustomers(){
   return Customer.countDocuments();
 }
 
-//regex
-function regexSearching(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
-//transferAmount
+/**
+ * Memperbarui saldo penerima uang transfer di database
+ * @param {string} receivedBy - nomor rekening penerima
+ * @param {string} sentBy - nomor rekening pengirim
+ * @param {number} amount - jumlah uang yang ditransfer
+ * @returns {boolean}
+ */
 async function updateReceiverBalance(receivedBy, sentBy, amount) {
   try {
+    //mencari akun nasabah penerima uang
     const receiver = await Customer.findOne({ account_number: receivedBy });
     //jika gagal menemukan customer yang menerima uang transfer
     if (!receiver) {
       return false; 
     }
-    //menjumlahkan saldo dengan jumlah uang yang ditransfer
+    //menjumlahkan saldo penerima dengan jumlah uang yang ditransfer
     const newBalance = receiver.balance + amount;
 
+    //update saldo baru
     await Customer.updateOne({ account_number: receivedBy }, { $set: { balance: newBalance } });
 
-    // Simpan transaksi
+    //menyimpan transaksi
     await savedTransaction(sentBy, receivedBy, amount);
 
     return true; 
@@ -74,8 +106,14 @@ async function updateReceiverBalance(receivedBy, sentBy, amount) {
   }
 }
 
-//sender
-async function updateSenderBalance(sentBy, receivedBy, amount) {
+
+/**
+ * Memperbarui saldo pengirim uang di database
+ * @param {string} sentBy - nomor rekening pengirim uang
+ * @param {number} amount - jumlah uang yang ditransfer
+ * @returns {boolean}
+ */
+async function updateSenderBalance(sentBy, amount) {
   try {
     const sender = await Customer.findOne({ account_number: sentBy });
     //jika gagal menemukan customer yang transfer uang.
@@ -84,7 +122,7 @@ async function updateSenderBalance(sentBy, receivedBy, amount) {
     }
     //mengurangi saldo milik pengirim
     const newBalance = sender.balance - amount;
-
+    //update saldo baru
     await Customer.updateOne({ account_number: sentBy }, { $set: { balance: newBalance } });
 
     return true; 
@@ -94,12 +132,23 @@ async function updateSenderBalance(sentBy, receivedBy, amount) {
   }
 }
 
-//delete customer
+
+/**
+ * menghapus akun nasabah dari database
+ * @param {string} account_number - nomor rekening nasabah
+ * @returns {Promise}
+ */
 async function deleteCustomer(account_number) {
   return Customer.deleteOne({ account_number: account_number });
 }
 
-//transaction history
+
+/**
+ * Menyimpan riwayat transaksi nasabah di database
+ * @param {string} sentBy - nomor rekening pengirim uang
+ * @param {string} receivedBy - nomor rekening penerima uang
+ * @param {number} amount - jumlah uang yang ditransfer
+ */
 async function savedTransaction(sentBy, receivedBy, amount){
   try{
     const newTransaction = new Transaction({
@@ -109,25 +158,91 @@ async function savedTransaction(sentBy, receivedBy, amount){
       timestamp: new Date()
     });
 
-    await newTransaction.save()
+    await newTransaction.save() //save transaksi baru ke database
 
   } catch (error) {
     console.error("Failed to saving the transaction:", error);
   }
 }
 
-//getTransactionHistory
+/**
+ * memperoleh list riwayat transaksi nasabah di database
+ * @param {string} account_number - nomor rekening nasabah
+ * @returns {object}
+ */
 async function getTransactionHistory(account_number) {
   try {
-    const transactions = await Transaction.find({
+    const transactions = await Transaction.find({ //mencari riwayat transaksi nasabah tertentu
       $or: [{ sender: account_number }, { receiver: account_number }]
-    }, { _id: 0, __v: 0 }).lean();
+    }, { _id: 0, __v: 0 }).lean();  //.lean() ini berfungsi untuk tidak mengikut sertakan '_id' dan '__v'
 
-    return transactions;
+    return transactions; 
   } catch (error) {
     console.error("Gagal mendapatkan riwayat transaksi:", error);
     throw error;
   }
+}
+
+
+/**
+ * menambahkan saldo nasabah setelah melakukan setor uang di database
+ * @param {string} account_number - nomor rekening nasabah
+ * @param {number} amount - jumlah uang yang di setor
+ * @returns {object}
+ */
+async function depositBalance(account_number, amount) {
+  try {
+    const customer = await Customer.findOne({ account_number }); //mencari akun nasabah yang melakukan deposit
+    const newBalance = customer.balance + amount; //menambahkan uang ke saldo nasabah
+
+    await Customer.updateOne({ account_number }, { $set: { balance: newBalance } }); //memperbarui saldo nasabah
+
+    return newBalance;
+  } catch (error) {
+    console.error("Failed depositing:", error);
+    throw error;
+  }
+}
+
+/**
+ * mengurangi saldo nasabah setelah menarik uang di database
+ * @param {string} account_number - nomor rekening nasabah
+ * @param {number} amount - jumlah uang yang ditarik
+ * @returns {object}
+ */
+async function retrieveBalance(account_number, amount) {
+  try {
+    const customer = await Customer.findOne({ account_number }); //mencari akun nasabah yang melakukan penarikan uang
+    const newBalance = customer.balance - amount; //mengurangi saldo nasabah setelah menarik uang
+
+    await Customer.updateOne({ account_number }, { $set: { balance: newBalance } }); //memperbarui saldo nasabah
+
+    return newBalance;
+  } catch (error) {
+    console.error("Failed Retrieving:", error);
+    throw error;
+  }
+}
+
+/**
+ * mengganti kode akses akun nasabah di databasse
+ * @param {string} account_number - nomor rekening nasabah
+ * @param {string} access_code - kode akses baru nasabah
+ * @returns {Promise}
+ */
+async function changeAccessCode(account_number, access_code) {
+  return Customer.updateOne({ account_number }, { $set: { access_code } }); //memperbarui kode akses nasabah menjadi kode akses baru
+}
+
+
+/**
+ * mengganti kode akses akun nasabah di databasse
+ * @param {string} account_number - nomor rekening nasabah
+ * @param {string} pin - pin baru nasabah
+ * @returns {Promise}
+ */
+async function changePin(account_number, pin) {
+  return Customer.updateOne({ account_number }, { $set: { pin } }); //memperbarui pin akun nasabah menjadi pin baru
 }
 
 
@@ -136,10 +251,13 @@ module.exports = {
   getCustomers,
   getCustomerByAccountNumber,
   getSumCustomers,
-  regexSearching,
   updateSenderBalance,
   updateReceiverBalance,
   deleteCustomer,
   savedTransaction,
   getTransactionHistory,
+  depositBalance,
+  retrieveBalance,
+  changeAccessCode,
+  changePin,
 }

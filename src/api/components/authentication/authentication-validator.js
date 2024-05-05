@@ -1,4 +1,5 @@
 const joi = require('joi');
+const { account_number, access_code } = require('../../../models/customers-schema');
 
 module.exports = {
   login: {
@@ -7,4 +8,13 @@ module.exports = {
       password: joi.string().required().label('Password'),
     },
   },
+
+  customerLogin: {
+    body: {
+      account_number: joi.string().required().label('account_number'),
+      access_code: joi.string().required().label('access_code'),
+    },
+  },
+
+  
 };

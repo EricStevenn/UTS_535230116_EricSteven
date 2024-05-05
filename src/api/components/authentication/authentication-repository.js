@@ -1,4 +1,5 @@
 const { User } = require('../../../models');
+const { Customer } = require('../../../models');
 
 /**
  * Get user by email for login information
@@ -18,7 +19,22 @@ async function updateUser(user) {
   }
 }
 
+async function getCustomerByAccountNumber(account_number) {
+  return Customer.findOne({ account_number });
+}
+
+async function updateCustomer(customer) {
+  try {
+    await Customer.updateOne({ account_number: customer.account_number }, { $set: customer });
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getUserByEmail,
   updateUser,
+  getCustomerByAccountNumber,
+  updateCustomer,
 };

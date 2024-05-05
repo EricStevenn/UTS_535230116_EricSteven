@@ -14,4 +14,10 @@ module.exports = (app) => {
     celebrate(authenticationValidators.login),
     authenticationControllers.login
   );
+
+  route.post(
+    '/customer_login',
+    celebrate(authenticationValidators.customerLogin),
+    authenticationControllers.customerLogin
+  );
 };

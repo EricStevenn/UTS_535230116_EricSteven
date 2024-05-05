@@ -39,8 +39,54 @@ module.exports = {
         .label('access_code'),
       transfer_to: joi.string().min(10).max(10).required().label('account_number'),
       amount: joi.number().min(10000).max(1000000).required().label('amount'), //anggap minimal transfer 10K dan maksimal 1M
-      pin: joi.string().pattern(/^\d{6}$/).required().label('pin'),
+      pin: joi.string().pattern(/^\d{6}$/).required().label('pin'), //pin berupa angka yang mempunyai panjang 6 angka
     },
   },
+
+  changeAccessCode: {
+    body: {
+      current_access_code: joiPassword
+        .string()
+        .minOfLowercase(1)
+        .minOfUppercase(1)
+        .minOfNumeric(3)
+        .noWhiteSpaces()
+        .onlyLatinCharacters()
+        .min(6)
+        .max(6)
+        .required()
+        .label('current_access_code'),
+      new_access_code: joiPassword
+        .string()
+        .minOfLowercase(1)
+        .minOfUppercase(1)
+        .minOfNumeric(3)
+        .noWhiteSpaces()
+        .onlyLatinCharacters()
+        .min(6)
+        .max(6)
+        .required()
+        .label('new_access_code'),
+      access_code_confirmation: joiPassword
+      .string()
+      .minOfLowercase(1)
+      .minOfUppercase(1)
+      .minOfNumeric(3)
+      .noWhiteSpaces()
+      .onlyLatinCharacters()
+      .min(6)
+      .max(6)
+      .required()
+      .label('access_code_confirmation'),
+      },
+    },
+
+    changePin: {
+      body: {
+        current_pin: joi.string().pattern(/^\d{6}$/).required().label('pin'),
+        new_pin: joi.string().pattern(/^\d{6}$/).required().label('pin'),
+        pin_confirmation: joi.string().pattern(/^\d{6}$/).required().label('pin'),
+        },
+      },
 
 };
