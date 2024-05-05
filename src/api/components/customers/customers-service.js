@@ -225,7 +225,7 @@ async function getTransactionHistory(account_number) {
       const receiver = transactionHistory.receiver === account_number ? customer_name : receiverName; //cek apakah nomor akun yang diinput pernah menerima uang atau tidak, jika ya maka memperoleh nomor rekeningnya
       const act = transactionHistory.sender === account_number ? "transfer" : "receive"; //menampilkan kegiatan transfer atau menerima uang pada nasabah tertentu
       const amount = await formattedCurrency(transactionHistory.amount);
-      const time = dateFormat(transactionHistory.time); //menampilkan waktu melakukan kegiatan transaksi
+      const time = dateFormat(transactionHistory.timestamp); //menampilkan waktu melakukan kegiatan transaksi
 
       let transaction_format;
       let info_message;
